@@ -12,6 +12,8 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { useNavigate } from "react-router-dom"
+import api from "@/utils/axios"
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -23,10 +25,7 @@ const formSchema = z.object({
   password: z.string().min(6, {
     message: "Password must be at least 6 characters.",
   }),
-  confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
+
 });
 
 type RegisterResponse = {
@@ -38,6 +37,7 @@ type RegisterResponse = {
 export function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const navigate = useNavigate()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,43 +49,50 @@ export function RegisterForm() {
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    console.log('Form submitted with values:', { ...values, password: '***' });
+    
     try {
       setIsLoading(true)
       setError("")
       
-      const response = await fetch('http://localhost:3000/api/users/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: values.name,
-          email: values.email,
-          password: values.password,
-        }),
-      })
+      console.log('Making registration request to:', '/users/register');
+      const response = await api.post<RegisterResponse>('/users/register', {
+        name: values.name,
+        email: values.email,
+        password: values.password,
+      });
+      
+      console.log('Registration response:', response.data);
 
-      const data: RegisterResponse = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed')
-      }
-
-      if (!data.success) {
-        throw new Error(data.message || 'Registration failed')
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Registration failed')
       }
 
       // Show success message
       alert('Registration successful! Please login.')
       
       // Redirect to login page
-      window.location.href = '/login'
+      navigate('/login')
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      console.error('Registration error:', err);
+      
+      if (err instanceof Error) {
+        if ('response' in err && err.response && typeof err.response === 'object' && 'data' in err.response) {
+          const axiosError = err as { response: { data: { message?: string } } }
+          console.error('Server error response:', axiosError.response.data);
+          setError(axiosError.response.data.message || "Registration failed. Please try again.")
+        } else {
+          console.error('Client error:', err.message);
+          setError(err.message || "Registration failed. Please try again.")
+        }
+      } else {
+        console.error('Unknown error:', err);
+        setError("An unexpected error occurred")
+      }
       // Clear password fields on error
       form.setValue('password', '')
-      form.setValue('confirmPassword', '')
+      
     } finally {
       setIsLoading(false)
     }
@@ -93,7 +100,13 @@ export function RegisterForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-8 pb-8">
+      <form 
+        onSubmit={(e) => {
+          console.log('Form submit event triggered');
+          form.handleSubmit(onSubmit)(e);
+        }} 
+        className="space-y-4 px-8 pb-8"
+      >
         {error && (
           <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md border border-red-200">
             {error}
@@ -158,6 +171,7 @@ export function RegisterForm() {
             </FormItem>
           )}
         />
+   
        
         <div className="pt-2">
           <Button 

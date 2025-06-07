@@ -35,6 +35,7 @@ interface LoginResponse {
       id: string;
       name: string;
       email: string;
+      role: 'admin' | 'user' | 'partner';
     };
   };
 }
@@ -58,13 +59,21 @@ export function LoginForm() {
       setIsLoading(true)
       setError("")
       
+      console.log('Attempting login with email:', data.email);
       const response = await api.post<LoginResponse>("/users/login", data)
+      console.log('Login response:', {
+        success: response.data.success,
+        message: response.data.message,
+        hasToken: !!response.data.data?.token,
+        userRole: response.data.data?.user.role
+      });
       
       if (!response.data.success || !response.data.data) {
-        throw new Error("Invalid server response")
+        throw new Error(response.data.message || "Invalid server response")
       }
 
       const { token, user } = response.data.data
+      console.log('Login successful, user role:', user.role);
 
       // Store token and user data
       setAuthToken(token)
@@ -75,16 +84,21 @@ export function LoginForm() {
       
       // Redirect to the page they tried to visit or home
       const from = location.state?.from?.pathname || "/"
+      console.log('Redirecting to:', from);
       navigate(from, { replace: true })
     } catch (error: unknown) {
+      console.error('Login error:', error);
       if (error instanceof Error) {
         if ('response' in error && error.response && typeof error.response === 'object' && 'data' in error.response) {
           const axiosError = error as { response: { data: { message?: string } } }
+          console.error('Server error:', axiosError.response.data);
           setError(axiosError.response.data.message || "Login failed. Please try again.")
         } else {
+          console.error('Client error:', error.message);
           setError(error.message || "Login failed. Please try again.")
         }
       } else {
+        console.error('Unknown error:', error);
         setError("An unexpected error occurred")
       }
       // Clear password field on error

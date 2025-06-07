@@ -2,6 +2,7 @@ interface UserData {
   id: string;
   name: string;
   email: string;
+  role: 'admin' | 'user' | 'partner';
 }
 
 // Token management

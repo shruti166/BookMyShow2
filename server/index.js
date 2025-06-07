@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dbConfig = require("./config/dbConfig");
 const userRoutes = require("./routes/userRoutes");
+const movieRoutes = require("./routes/movieRoutes");
 
 const app = express();
 
@@ -11,6 +12,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/users', userRoutes);
+app.use('/api/movies', movieRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

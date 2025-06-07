@@ -99,7 +99,8 @@ router.post("/login", validateLoginInput, async (req, res) => {
     const token = jwt.sign(
       { 
         userId: user._id,
-        email: user.email
+        email: user.email,
+        role: user.role
       },
       'your-secret-key', // TODO: Move to environment variable
       { expiresIn: '24h' }
@@ -114,7 +115,8 @@ router.post("/login", validateLoginInput, async (req, res) => {
         user: {
           id: user._id,
           name: user.name,
-          email: user.email
+          email: user.email,
+          role: user.role
         }
       }
     });
@@ -163,6 +165,47 @@ router.get("/get-valid-user", authMiddleware, async (req, res) => {
       success: false, 
       message: "Server Error", 
       error: err.message 
+    });
+  }
+});
+
+router.put("/update-role", authMiddleware, async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { role } = req.body;
+
+    if (!role || !['admin', 'user', 'partner'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role. Must be one of: admin, user, partner"
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { role },
+      { new: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Role updated successfully",
+      data: updatedUser
+    });
+
+  } catch (err) {
+    console.error('Update role error:', err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update role",
+      error: err.message
     });
   }
 });

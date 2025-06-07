@@ -1,6 +1,4 @@
 const express = require("express");
-import { update } from "../../client/my-react-project/node_modules/tar/dist/esm/update";
-import query from "../../client/my-react-project/node_modules/esquery/dist/esquery.esm";
 const router = express.Router();
 
 const Movie = require("../models/MovieModel");
@@ -15,38 +13,56 @@ router.post("/add-movie", async (req, res) => {
   }
 });
 
-router.get("/movies", async (req, res) => {
+router.get("/get-all-movies", async (req, res) => {
   try {
-    const allMovie = await Movie.find();
-
-    res.send({
-      status: success,
-      message: "Movie added successfully",
-      data: allMovie,
+    const allMovies = await Movie.find().sort({ createdAt: -1 });
+    return res.json({
+      success: true,
+      message: "Movies retrieved successfully",
+      data: allMovies
     });
   } catch (err) {
-    res.send({
-      status: failed,
-      message: err.message,
+    console.error('Get movies error:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
     });
   }
 });
 
 router.put("/update/:id", async (req, res) => {
   try {
-    const updatedMovie = await Movie.findByIdAndUpdate(req.body);
-    res.send({
-      status: success,
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Update the movie with the new data
+    const updatedMovie = await Movie.findByIdAndUpdate(
+      id,
+      updateData,  // Pass the update data directly
+      { new: true }  // Return the updated document
+    );
+
+    if (!updatedMovie) {
+      return res.status(404).json({
+        success: false,
+        message: "Movie not found"
+      });
+    }
+
+    return res.json({
+      success: true,
       message: "Movie updated successfully",
-      data: updatedMovie,
+      data: updatedMovie
     });
   } catch (err) {
-    res.send({
-      status: failed,
-      message: err.message,
+    console.error('Update movie error:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
     });
   }
 });
+
 router.post("/delete-movie", async (req, res) => {
   try {
     await Movie.findByIdAndDelete(req.body.movieId);
@@ -62,3 +78,6 @@ router.post("/delete-movie", async (req, res) => {
     });
   }
 });
+
+module.exports = router;
+
